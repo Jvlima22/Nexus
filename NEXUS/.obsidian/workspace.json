@@ -1,0 +1,219 @@
+{
+  "main": {
+    "id": "cf899ce732476909",
+    "type": "split",
+    "children": [
+      {
+        "id": "17eb114f1ebdaf72",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7e33aa4789e81e66",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "40_Registros/Diario/2026-05-23.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "2026-05-23"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "fd8f4fab0689cc5a",
+    "type": "split",
+    "children": [
+      {
+        "id": "f883b67502b94abd",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7a4eb6f97e153a9a",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de arquivos"
+            }
+          },
+          {
+            "id": "003241a7cf4a9f45",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Procurar"
+            }
+          },
+          {
+            "id": "666ccfc4d8fe4e26",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "ec270087f4267f9d",
+    "type": "split",
+    "children": [
+      {
+        "id": "7f523d4d0ed5a8c8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6829e4483bcde350",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Bem-vindo.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Links inversos para Bem-vindo"
+            }
+          },
+          {
+            "id": "086e7473568e7ed0",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Bem-vindo.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Links de saída para Bem-vindo"
+            }
+          },
+          {
+            "id": "b6364005e1c14e1b",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "d83a2c9097704a40",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas as propriedades"
+            }
+          },
+          {
+            "id": "8f8cc5f7a0f36232",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Bem-vindo.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Sumário de Bem-vindo"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir a troca rápida": false,
+      "graph:Abrir visualização em gráfico": false,
+      "canvas:Criar novo canvas": false,
+      "daily-notes:Abrir a nota de hoje": false,
+      "templates:Inserir modelo": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Criar nova base": false
+    }
+  },
+  "active": "7e33aa4789e81e66",
+  "lastOpenFiles": [
+    "40_Registros/Diario/2026-05-23.md.tmp.19880.440399f3679b",
+    "10_Desenvolvimento/Decisoes/2026-05-23 Custo da IA - API pay-as-you-go vs assinatura.md",
+    "40_Registros/Diario/2026-05-23.md.tmp.19880.0b61e2f01b32",
+    "30_Trading/Operacoes/2026-05-23 AIG-OTC PUT (nexus).md",
+    "30_Trading/Operacoes/2026-05-23 AIG-OTC PUT (nexus).md.tmp.19880.1aabb807b68d",
+    "_Sistema/Templates/Decisao.md",
+    "10_Desenvolvimento/Tarefas Pendentes - Dados ao vivo IQ.md",
+    "40_Registros/Diario/2026-05-23.md.tmp.15928.75961946c1a8",
+    "10_Desenvolvimento/Decisoes/2026-05-23 Custo da IA - API pay-as-you-go vs assinatura.md.tmp.15928.97b400842b4d",
+    "40_Registros/Diario/2026-05-23.md.tmp.19880.3b143a66467a",
+    "10_Desenvolvimento/Tarefas Pendentes - Dados ao vivo IQ.md.tmp.19880.2b74bbca9cb8",
+    "10_Desenvolvimento/Decisoes/2026-05-23 Arquitetura de dados ao vivo IQ Option.md.tmp.19880.b4ec8cd15926",
+    "40_Registros/Diario/2026-05-23.md.tmp.19880.793155b136cc",
+    "10_Desenvolvimento/Tarefas Pendentes - Dados ao vivo IQ.md.tmp.19880.2e86b448ab4b",
+    "40_Registros/Diario/2026-05-23.md.tmp.19880.20253ad8bbed",
+    "Bem-vindo.md",
+    "40_Registros/Diario/2026-05-23.md",
+    "10_Desenvolvimento/Decisoes/2026-05-23 Arquitetura de dados ao vivo IQ Option.md",
+    "20_Ferramentas/NEXUS Connector.md",
+    "10_Desenvolvimento/Decisoes/2026-05-23 Hooks de auto-log no diario.md",
+    "00_Inbox.md",
+    "_Sistema/Templates/Trade.md",
+    "10_Desenvolvimento/Decisoes/2026-05-23 Documentacao obrigatoria no Obsidian.md",
+    "_Sistema/Templates/Diario.md",
+    "20_Ferramentas.md",
+    "_Sistema/Templates/Estrategia.md",
+    "_Sistema/Templates/Exclusao.md",
+    "_Sistema/Templates/Ferramenta.md",
+    "_Sistema/Templates/Projeto.md"
+  ]
+}

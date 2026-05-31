@@ -1,0 +1,40 @@
+filters:
+  and:
+    - file.inFolder("30_Trading/Operacoes")
+    - tipo == "trade"
+    - status == "aberto"
+formulas:
+  dias_aberto: (now() - date(entrada_data)).days
+  risco_r: if(entrada_preco && stop, ((entrada_preco - stop) * size).round(2), "")
+properties:
+  ativo:
+    displayName: Ativo
+  direcao:
+    displayName: Direção
+  entrada_data:
+    displayName: Entrada
+  entrada_preco:
+    displayName: Preço
+  stop:
+    displayName: Stop
+  alvo:
+    displayName: Alvo
+  formula.dias_aberto:
+    displayName: Dias aberto
+  formula.risco_r:
+    displayName: Risco
+views:
+  - type: table
+    name: Em aberto
+    order:
+      - file.name
+      - ativo
+      - direcao
+      - entrada_data
+      - entrada_preco
+      - stop
+      - alvo
+      - formula.dias_aberto
+      - formula.risco_r
+    summaries:
+      formula.dias_aberto: Average

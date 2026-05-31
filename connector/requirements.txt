@@ -1,0 +1,17 @@
+# NEXUS Connector — dependências
+#
+# IQ Option: o pacote 'iqoptionapi' no PyPI é de 2016 (abandonado). O fork mantido
+# (com stable_api) vive no GitHub e instala via git — REQUER git instalado.
+# Alternativa sem git: baixar o ZIP do repo e `pip install <pasta-extraida>`.
+git+https://github.com/iqoptionapi/iqoptionapi.git
+# Versão exigida pelo fork; websocket-client mais novo quebra a conexão.
+websocket-client==0.56.0
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+httpx==0.28.1
+
+# Escrita no Supabase (Fases 3-5). Cliente oficial Python.
+supabase==2.11.0

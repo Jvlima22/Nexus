@@ -1,0 +1,37 @@
+filters:
+  and:
+    - file.inFolder("10_Desenvolvimento/Projetos")
+    - tipo == "projeto"
+formulas:
+  dias_desde_update: (now() - file.mtime).days
+properties:
+  status:
+    displayName: Status
+  stack:
+    displayName: Stack
+  formula.dias_desde_update:
+    displayName: Dias s/ update
+  file.mtime:
+    displayName: Última edição
+views:
+  - type: table
+    name: Ativos
+    filters:
+      and:
+        - status == "ativo"
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - status
+      - stack
+      - formula.dias_desde_update
+      - file.mtime
+  - type: table
+    name: Todos
+    order:
+      - file.name
+      - status
+      - stack
+      - formula.dias_desde_update

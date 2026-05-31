@@ -1,0 +1,29 @@
+# Render Blueprint — NEXUS Connector (plano Free + keep-alive)
+# Deploy: New > Blueprint, aponte para este repo. rootDir isola o subdiretório.
+services:
+  - type: web
+    name: nexus-connector
+    runtime: python
+    plan: free                      # dorme após ~15 min ocioso; ver keep-alive no README
+    rootDir: connector
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    region: oregon
+    envVars:
+      - key: IQ_SSID
+        sync: false               # defina manualmente no painel (secreto)
+      - key: SSID_ENDPOINT
+        sync: false
+      - key: SSID_TOKEN
+        sync: false
+      - key: IQ_BALANCE_MODE
+        value: PRACTICE
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: NEXUS_USER_ID
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
