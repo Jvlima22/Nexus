@@ -3,24 +3,52 @@ import { supabase } from "@/lib/supabase";
 
 export interface TradeRow {
   id: string;
-  asset: string;
-  type: string | null; // "Call" | "Put"
-  amount: number | null;
-  payout: number | null;
-  result: number | null; // PnL em $ (preenchido no fechamento)
-  status: string | null; // open | win | loss | tie
-  source: string | null; // nexus | manual
+  // Campos MT5
+  position_id: string | null;
+  symbol: string | null;
+  asset: string | null;           // fallback legacy
+  direction: string | null;       // BUY | SELL
+  type: string | null;            // alias direction (legado)
+  volume: number | null;
+  entry_price: number | null;
+  stop_loss: number | null;
+  take_profit: number | null;
+  close_price: number | null;
+  pnl: number | null;
+  result: number | null;          // legado — mesmo que pnl
+  close_reason: string | null;    // tp | sl | manual
+  status: string | null;          // open | closed | win | loss
+  source: string | null;
+  session: string | null;
+  timeframe: string | null;
   time: string | null;
-  external_id: string | null;
+  created_at: string | null;
+  closed_at: string | null;
 }
 
-const COLS = "id,asset,type,amount,payout,result,status,source,time,external_id";
+const COLS = [
+  "id", "position_id", "symbol", "asset", "direction", "type",
+  "volume", "entry_price", "stop_loss", "take_profit",
+  "close_price", "pnl", "result", "close_reason",
+  "status", "source", "session", "timeframe",
+  "time", "created_at", "closed_at",
+].join(",");
+
+/** Retorna o par do trade independente do campo preenchido. */
+export function tradePair(t: TradeRow): string {
+  return t.symbol ?? t.asset ?? "—";
+}
+
+/** Retorna a direção (BUY/SELL) independente do campo preenchido. */
+export function tradeDirection(t: TradeRow): string | null {
+  return t.direction ?? t.type ?? null;
+}
 
 /**
- * Operações em `trades` com tempo real. Uma ordem aparece como `open` e muda
- * para win/loss sozinha quando o Connector dá UPDATE (acompanhamento do resultado).
+ * Operações MT5 em tempo real via Supabase Realtime.
+ * Suporta tanto trades MT5 (nexus_mt5) quanto legado (nexus/manual).
  */
-export function useTrades(limit = 50) {
+export function useTrades(limit = 100) {
   const [trades, setTrades] = useState<TradeRow[]>([]);
 
   useEffect(() => {
@@ -29,14 +57,14 @@ export function useTrades(limit = 50) {
     supabase
       .from("trades")
       .select(COLS)
-      .order("time", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(limit)
       .then(({ data }) => {
         if (active && data) setTrades(data as TradeRow[]);
       });
 
     const channel = supabase
-      .channel("trades-rt")
+      .channel("trades-rt-mt5")
       .on("postgres_changes", { event: "*", schema: "public", table: "trades" }, (payload) => {
         setTrades((prev) => {
           if (payload.eventType === "DELETE") {

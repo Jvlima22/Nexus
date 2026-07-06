@@ -5,7 +5,10 @@ import logging
 import threading
 import time
 
+import forexfactory
+import polymarket
 import supabase_sync
+from config import settings
 from iq_client import client
 
 logger = logging.getLogger("nexus.sync")
@@ -46,6 +49,54 @@ def start_balance_sync(interval_s: int = 15) -> None:
         return
     threading.Thread(target=_balance_loop, args=(interval_s,), daemon=True, name="balance-sync").start()
     logger.info("Sync de saldo iniciado (cada %ss)", interval_s)
+
+
+def _sentiment_loop(interval_s: int, slugs: list[str]) -> None:
+    while True:
+        for slug in slugs:
+            try:
+                snap = polymarket.fetch_market(slug)
+                if snap:
+                    supabase_sync.upsert_sentiment(snap)
+                    logger.info("sentimento %s: %s (%.0f%%)", slug, snap["bias"], snap["probability"] * 100)
+            except Exception:  # noqa: BLE001
+                logger.exception("Falha no sync de sentimento (%s)", slug)
+        time.sleep(interval_s)
+
+
+def start_sentiment_sync() -> None:
+    """Poll da Polymarket (Gamma) → market_sentiment. No-op sem slugs ou sem Supabase."""
+    slugs = settings.polymarket_slugs_list
+    if not supabase_sync.configured() or not slugs:
+        logger.info("Sync de sentimento desligado (sem Supabase ou POLYMARKET_SLUGS vazio)")
+        return
+    threading.Thread(
+        target=_sentiment_loop, args=(settings.polymarket_poll_s, slugs), daemon=True, name="sentiment-sync"
+    ).start()
+    logger.info("Sync de sentimento iniciado (%d mercados, cada %ss)", len(slugs), settings.polymarket_poll_s)
+
+
+def _calendar_loop(interval_s: int) -> None:
+    while True:
+        try:
+            events = forexfactory.fetch_events()
+            if events:
+                forexfactory.set_cache(events)
+                logger.info("calendário ForexFactory atualizado (%d eventos)", len(events))
+        except Exception:  # noqa: BLE001
+            logger.exception("Falha no sync do calendário")
+        time.sleep(interval_s)
+
+
+def start_calendar_sync() -> None:
+    """Recarrega o calendário ForexFactory no cache em memória (não usa Supabase)."""
+    if not settings.calendar_gate_enabled:
+        logger.info("Sync de calendário desligado (CALENDAR_GATE_ENABLED=false)")
+        return
+    threading.Thread(
+        target=_calendar_loop, args=(settings.calendar_poll_s,), daemon=True, name="calendar-sync"
+    ).start()
+    logger.info("Sync de calendário iniciado (cada %ss)", settings.calendar_poll_s)
 
 
 # Tipos de instrumento que a lib aceita no histórico.

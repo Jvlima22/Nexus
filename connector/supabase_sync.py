@@ -60,6 +60,55 @@ def upsert_assets(assets: list[dict[str, Any]]) -> None:
     get_sb().table("assets").upsert(rows, on_conflict="user_id,symbol,type").execute()
 
 
+def get_open_assets() -> list[dict[str, Any]]:
+    """Ativos atualmente abertos (alimentados pelo loop de asset-sync). Base da watchlist
+    dinâmica do autotrader — leitura rápida no Supabase em vez de bater na IQ a cada ciclo."""
+    res = (
+        get_sb()
+        .table("assets")
+        .select("symbol,type,payout")
+        .eq("user_id", settings.nexus_user_id)
+        .eq("is_open", True)
+        .execute()
+    )
+    return res.data or []
+
+
+def upsert_asset_edge(rows: list[dict[str, Any]]) -> None:
+    """Upsert do edge medido (backtest) por (user_id, symbol). Alimenta o gate de
+    evidência do autotrader e o painel. service_role bypassa RLS."""
+    if not rows:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    payload = [
+        {
+            "user_id": settings.nexus_user_id,
+            "symbol": r["symbol"],
+            "hit_rate": r.get("hit_rate"),
+            "sample": r.get("sample") or 0,
+            "confluence_hit_rate": r.get("confluence_hit_rate"),
+            "confluence_sample": r.get("confluence_sample") or 0,
+            "breakeven": r.get("breakeven"),
+            "passes_gate": bool(r.get("passes_gate")),
+            "updated_at": now,
+        }
+        for r in rows
+    ]
+    get_sb().table("asset_edge").upsert(payload, on_conflict="user_id,symbol").execute()
+
+
+def get_asset_edge() -> dict[str, dict[str, Any]]:
+    """Edge medido por símbolo (mapa symbol → linha). Base do gate de evidência."""
+    res = (
+        get_sb()
+        .table("asset_edge")
+        .select("symbol,hit_rate,sample,confluence_hit_rate,confluence_sample,breakeven,passes_gate,updated_at")
+        .eq("user_id", settings.nexus_user_id)
+        .execute()
+    )
+    return {r["symbol"]: r for r in (res.data or [])}
+
+
 def insert_trade(
     active: str,
     direction: str,
@@ -87,6 +136,29 @@ def insert_trade(
     }
     res = get_sb().table("trades").insert(row).execute()
     return res.data[0]["id"]
+
+
+def insert_trade_snapshot(
+    trade_id: str,
+    external_id: Any,
+    asset: str,
+    timeframe: str,
+    snapshot: dict[str, Any],
+) -> None:
+    """Grava o retrato do mercado no instante da ordem em `trade_snapshots` (1 por trade).
+    Upsert por (user_id, trade_id) — reexecução não duplica. Lido sob demanda no clique."""
+    get_sb().table("trade_snapshots").upsert(
+        {
+            "user_id": settings.nexus_user_id,
+            "trade_id": trade_id,
+            "external_id": str(external_id) if external_id is not None else None,
+            "asset": asset,
+            "timeframe": timeframe,
+            "snapshot": snapshot,
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="user_id,trade_id",
+    ).execute()
 
 
 def insert_balance(balance: float) -> None:
@@ -157,6 +229,101 @@ def get_open_nexus_trades() -> list[dict[str, Any]]:
         .execute()
     )
     return [r for r in res.data if r.get("external_id")]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Polymarket (Fase 4): snapshot de sentimento macro + leitura p/ o Risk Judge.
+# ──────────────────────────────────────────────────────────────────────────────
+def upsert_sentiment(snapshot: dict[str, Any]) -> None:
+    """Upsert do bias de um mercado em `market_sentiment` por (user_id, slug)."""
+    get_sb().table("market_sentiment").upsert(
+        {
+            "user_id": settings.nexus_user_id,
+            "slug": snapshot["slug"],
+            "question": snapshot.get("question"),
+            "probability": snapshot["probability"],
+            "bias": snapshot["bias"],
+            "volume": snapshot.get("volume"),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="user_id,slug",
+    ).execute()
+
+
+def get_sentiment() -> list[dict[str, Any]]:
+    """Snapshots de sentimento do usuário (p/ o Risk Judge agregar o bias macro)."""
+    res = (
+        get_sb()
+        .table("market_sentiment")
+        .select("slug,question,probability,bias,volume,updated_at")
+        .eq("user_id", settings.nexus_user_id)
+        .execute()
+    )
+    return res.data or []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Risk Judge (Fase 3): estado para circuit breaker / teto diário + auditoria.
+# ──────────────────────────────────────────────────────────────────────────────
+def recent_results(limit: int = 10) -> list[str]:
+    """Status das últimas ordens fechadas (mais recente primeiro). Base do circuit breaker."""
+    res = (
+        get_sb()
+        .table("trades")
+        .select("status,closed_at")
+        .eq("user_id", settings.nexus_user_id)
+        .in_("status", ["win", "loss", "tie"])
+        .order("closed_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return [r["status"] for r in res.data]
+
+
+def today_realized_pnl() -> float:
+    """Soma do PnL (`result`) das ordens fechadas desde 00:00 UTC. Negativo = prejuízo."""
+    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    res = (
+        get_sb()
+        .table("trades")
+        .select("result")
+        .eq("user_id", settings.nexus_user_id)
+        .gte("closed_at", start.isoformat())
+        .not_.is_("result", "null")
+        .execute()
+    )
+    return float(sum((r.get("result") or 0) for r in res.data))
+
+
+def insert_risk_event(
+    decision: str,
+    code: str,
+    active: str,
+    direction: str,
+    confidence: float | None,
+    amount: float,
+    balance: float | None,
+    reason: str,
+    details: dict[str, Any] | None = None,
+) -> None:
+    """Audita o veredito do Risk Judge (aprovação ou veto) em `risk_events`."""
+    try:
+        get_sb().table("risk_events").insert(
+            {
+                "user_id": settings.nexus_user_id,
+                "decision": decision,
+                "code": code,
+                "asset": active,
+                "direction": direction,
+                "confidence": confidence,
+                "amount": amount,
+                "balance": balance,
+                "reason": reason,
+                "details": details or {},
+            }
+        ).execute()
+    except Exception:  # noqa: BLE001 — auditoria não pode derrubar a decisão de risco
+        logger.exception("Falha ao gravar risk_event (%s/%s)", decision, code)
 
 
 def close_trade(order_id: Any, status: str, pnl: float | None) -> None:

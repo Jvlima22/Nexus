@@ -27,3 +27,5 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
+      - key: POLYMARKET_SLUGS        # CSV de slugs da Gamma (vazio = camada off)
+        sync: false

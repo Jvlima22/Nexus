@@ -17,7 +17,7 @@ export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user, signOut } = useAuth();
   return (
-    <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+    <aside className="hidden md:flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="flex items-center gap-2 px-5 h-16 border-b border-sidebar-border">
         <div className="relative grid place-items-center h-8 w-8 rounded-md bg-primary/15 text-primary">
           <Activity className="h-4 w-4" />
@@ -28,7 +28,7 @@ export function Sidebar() {
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Autonomous AI</div>
         </div>
       </div>
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 overflow-y-auto scrollbar-modern p-3 space-y-1">
         {nav.map((n) => {
           const active = path === n.to;
           return (
