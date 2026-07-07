@@ -217,14 +217,14 @@ def insert_historical_trades(positions: list[dict[str, Any]]) -> int:
     return len(rows)
 
 
-def get_open_nexus_trades() -> list[dict[str, Any]]:
-    """Trades da NEXUS ainda 'open' (p/ reconciliar resultado após restart)."""
+def get_open_nexus_trades(source: str = "nexus") -> list[dict[str, Any]]:
+    """Trades ainda 'open' de uma origem (p/ reconciliar resultado após restart)."""
     res = (
         get_sb()
         .table("trades")
         .select("external_id,option_type")
         .eq("user_id", settings.nexus_user_id)
-        .eq("source", "nexus")
+        .eq("source", source)
         .eq("status", "open")
         .execute()
     )
@@ -265,13 +265,14 @@ def get_sentiment() -> list[dict[str, Any]]:
 # ──────────────────────────────────────────────────────────────────────────────
 # Risk Judge (Fase 3): estado para circuit breaker / teto diário + auditoria.
 # ──────────────────────────────────────────────────────────────────────────────
-def recent_results(limit: int = 10) -> list[str]:
-    """Status das últimas ordens fechadas (mais recente primeiro). Base do circuit breaker."""
+def recent_results(limit: int = 10, source: str = "nexus") -> list[str]:
+    """Status das últimas ordens fechadas de uma origem (mais recente primeiro). Base do circuit breaker."""
     res = (
         get_sb()
         .table("trades")
         .select("status,closed_at")
         .eq("user_id", settings.nexus_user_id)
+        .eq("source", source)
         .in_("status", ["win", "loss", "tie"])
         .order("closed_at", desc=True)
         .limit(limit)
@@ -280,14 +281,15 @@ def recent_results(limit: int = 10) -> list[str]:
     return [r["status"] for r in res.data]
 
 
-def today_realized_pnl() -> float:
-    """Soma do PnL (`result`) das ordens fechadas desde 00:00 UTC. Negativo = prejuízo."""
+def today_realized_pnl(source: str = "nexus") -> float:
+    """Soma do PnL (`result`) das ordens de uma origem fechadas desde 00:00 UTC. Negativo = prejuízo."""
     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     res = (
         get_sb()
         .table("trades")
         .select("result")
         .eq("user_id", settings.nexus_user_id)
+        .eq("source", source)
         .gte("closed_at", start.isoformat())
         .not_.is_("result", "null")
         .execute()

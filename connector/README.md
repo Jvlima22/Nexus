@@ -1,8 +1,10 @@
 # NEXUS Connector
 
-Serviço Python persistente que faz a ponte entre a **IQ Option** (API não-oficial,
-WS por SSID) e o NEXUS. Arquitetura **Híbrida**: serve candles ao vivo direto via
-WS e grava estado durável (assets/trades/saldo) no Supabase.
+Serviço Python persistente que faz a ponte entre **IQ Option** (API não-oficial,
+WS por SSID) **e MetaTrader 5** (forex real) e o NEXUS — um único processo, uma
+única porta (**8010**; a 8000 é do próprio terminal MT5 na máquina). Arquitetura
+**Híbrida**: serve candles ao vivo direto via WS e grava estado durável
+(assets/trades/saldo) no Supabase.
 
 > ⚠️ A API da IQ Option **não é oficial**, pode quebrar a qualquer atualização e
 > seu uso **viola o ToS** (risco de ban da conta). Use ciente.
@@ -15,17 +17,26 @@ WS e grava estado durável (assets/trades/saldo) no Supabase.
 - [x] **Fase 5** — sync de saldo (`get_balance`/15s → `bankroll_history`) no dashboard; `POST /backfill` importa histórico (`get_position_history` → `trades` source='manual'); `/historico` lê trades reais via Realtime.
 
 ## Endpoints
+
+**IQ Option:**
 ```
 GET  /health
 GET  /assets
 GET  /candles?active=&size=&count=
+GET  /indicators?active=&size=&count=     sinal determinístico (RSI/EMA/MACD/Bollinger)
+GET  /sentiment                           bias macro agregado (Polymarket)
 POST /order      body: {active, direction(call|put), amount, expiration(min), option_type}
+GET  /autotrader/status
+POST /autotrader/toggle   body: {enabled}
 POST /backfill   importa operações passadas (rodar uma vez)
 POST /reconcile  fecha ordens 'open' órfãs (consulta resultado na IQ)
 GET  /vault/tree           lista todos os .md do vault Obsidian
 GET  /vault/file?path=     markdown cru de uma nota (sandbox no vault)
 WS   /ws/candles?active=&size=
 ```
+
+**MetaTrader 5:** ver `/mt5/*` no topo de `main.py` (session, account, candles,
+positions, analyze, signal, order, close, stats, summary, `/ws/mt5/candles`).
 
 ## Rodar local (Windows / PowerShell)
 Requer **git** instalado (a lib da IQ vem do GitHub). Use o python do venv direto
@@ -37,7 +48,7 @@ python -m venv .venv
 Copy-Item .env.example .env        # preencha IQ_EMAIL + IQ_PASSWORD
 .\.venv\Scripts\python.exe main.py
 ```
-Teste: `GET http://localhost:8000/health` → `{"ok":true,"iq_connected":true}`.
+Teste: `GET http://localhost:8010/health` → `{"ok":true,"iq_connected":true,"mt5_connected":true}`.
 
 ## Autenticação
 - **Recomendado:** `IQ_EMAIL` + `IQ_PASSWORD` no `.env` — a lib loga e gerencia o

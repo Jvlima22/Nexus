@@ -37,7 +37,7 @@ def place_order(
         raise RuntimeError("Supabase não configurado — ordem não seria registrada")
 
     # ── Risk Judge: todo sinal passa por aqui antes de executar ──
-    verdict = risk.evaluate(active, direction, amount, confidence)
+    verdict = risk.evaluate(active, direction, amount, confidence, balance=client.get_balance(), source="nexus")
 
     payout = client.get_payout(active, option_type)
     order_id = client.buy(active, direction, amount, expiration_min, option_type)

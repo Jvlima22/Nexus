@@ -17,6 +17,11 @@ class Settings(BaseSettings):
 
     iq_balance_mode: str = "PRACTICE"  # PRACTICE | REAL
 
+    # ── MetaTrader 5 — terminal local (mesma máquina do connector) ──
+    mt5_login: int = 0
+    mt5_password: str = ""
+    mt5_server: str = ""
+
     # ── Risk Judge (Fase 3): o juiz inegociável por onde todo sinal passa ──
     risk_pct: float = 0.02                # alocação máx. por operação (% da banca)
     min_confidence: float = 0.70          # confiança mínima do sinal p/ executar
@@ -24,6 +29,9 @@ class Settings(BaseSettings):
     neutral_high: float = 0.60
     max_consecutive_losses: int = 3       # circuit breaker: stops seguidos
     daily_loss_cap_pct: float = 0.06      # teto de prejuízo no dia (% da banca)
+    # Gate de margem (broker com margem, ex. MT5): veta novas entradas se o
+    # margin_level cair abaixo disso. Só roda quando o chamador informa margin_level.
+    min_margin_level_pct: float = 150.0
 
     # ── Polymarket (Fase 4): sentimento macro = filtro primário de direção ──
     # CSV de slugs de mercados da Gamma a monitorar. Vazio = camada desligada.
@@ -96,8 +104,9 @@ class Settings(BaseSettings):
     # Vault Obsidian servido na página Knowledge. Vazio = <repo>/NEXUS (ao lado de connector/).
     vault_path: str = ""
 
-    port: int = 8000
-    allowed_origins: str = "http://localhost:3000"
+    # 8000 é usado pelo terminal MT5 nesta máquina — connector sobe em outra porta.
+    port: int = 8010
+    allowed_origins: str = "http://localhost:3000,http://localhost:5173"
 
     @property
     def origins_list(self) -> list[str]:

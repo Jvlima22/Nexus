@@ -15,6 +15,11 @@ Regras (todas precisam passar; o primeiro veto interrompe e é auditado):
 Confiança é opcional: ordens manuais (dashboard, sem sinal de IA) pulam as
 regras 1–2, mas SEMPRE obedecem 0b e 3–5 (sessão, alocação, circuit breaker e
 teto diário protegem humano e máquina por igual).
+
+Agnóstico de corretora: quem chama informa `balance` (e, opcionalmente,
+`margin_level` e `source`) em vez do módulo ir buscar isso na IQ Option. Isso
+permite o mesmo juiz avaliar sinais do IQ Option (`source="nexus"`) e do MT5
+(`source="nexus_mt5"`).
 """
 from __future__ import annotations
 
@@ -24,7 +29,6 @@ from datetime import datetime, timezone
 import forexfactory
 import supabase_sync
 from config import settings
-from iq_client import client
 
 logger = logging.getLogger("nexus.risk")
 
@@ -38,8 +42,24 @@ class RiskError(Exception):
         self.details = details or {}
 
 
-def evaluate(active: str, direction: str, amount: float, confidence: float | None) -> dict:
+def evaluate(
+    active: str,
+    direction: str,
+    amount: float,
+    confidence: float | None,
+    *,
+    balance: float,
+    source: str = "nexus",
+    margin_level: float | None = None,
+    enforce_session: bool | None = None,
+) -> dict:
     """Roda o funil de risco. Levanta RiskError no primeiro veto; senão devolve o veredito.
+
+    `source` identifica a corretora/robô para o circuit breaker e o teto diário
+    (cada `source` tem seu próprio histórico de resultados em `trades`).
+    `margin_level` (opcional, em %) ativa o gate de margem — usado pelo MT5.
+    `enforce_session` sobrepõe `settings.session_gate_enabled` quando informado
+    (ex.: MT5 passa `False` pra operar 24h, fora das janelas de Londres/NY).
 
     O veto e a aprovação são gravados em `risk_events` para auditoria.
     """
@@ -47,6 +67,7 @@ def evaluate(active: str, direction: str, amount: float, confidence: float | Non
         raise ValueError("confidence deve estar entre 0 e 1")
 
     def veto(code: str, message: str, details: dict) -> RiskError:
+        details = {**details, "source": source}
         supabase_sync.insert_risk_event(
             "rejected", code, active, direction, confidence, amount, details.get("balance"), message, details
         )
@@ -70,7 +91,8 @@ def evaluate(active: str, direction: str, amount: float, confidence: float | Non
             )
 
     # ── Regra 0b: janela de sessão (Londres/NY) — só opera na liquidez ──
-    if settings.session_gate_enabled:
+    session_gate = settings.session_gate_enabled if enforce_session is None else enforce_session
+    if session_gate:
         hour = datetime.now(timezone.utc).hour
         if not _in_session(hour):
             raise veto(
@@ -109,8 +131,7 @@ def evaluate(active: str, direction: str, amount: float, confidence: float | Non
                 {"confidence": confidence},
             )
 
-    # ── Regra 3: alocação ≤ 2% da banca (saldo recalculado agora) ──
-    balance = client.get_balance()
+    # ── Regra 3: alocação ≤ 2% da banca (saldo informado pelo chamador) ──
     limit = round(balance * settings.risk_pct, 2)
     if amount > limit:
         raise veto(
@@ -120,8 +141,17 @@ def evaluate(active: str, direction: str, amount: float, confidence: float | Non
             {"balance": balance, "risk_limit": limit},
         )
 
+    # ── Regra 3b: margem mínima (corretoras com margem, ex. MT5) ──
+    if margin_level is not None and margin_level < settings.min_margin_level_pct:
+        raise veto(
+            "MARGIN_LEVEL_LOW",
+            f"Margin level {margin_level:.0f}% abaixo do mínimo de "
+            f"{settings.min_margin_level_pct:.0f}%. Sem novas entradas até a conta recuperar margem.",
+            {"balance": balance, "margin_level": margin_level},
+        )
+
     # ── Regra 4: circuit breaker de stops seguidos ──
-    streak = _consecutive_losses(supabase_sync.recent_results(settings.max_consecutive_losses))
+    streak = _consecutive_losses(supabase_sync.recent_results(settings.max_consecutive_losses, source=source))
     if streak >= settings.max_consecutive_losses:
         raise veto(
             "CIRCUIT_BREAKER",
@@ -131,7 +161,7 @@ def evaluate(active: str, direction: str, amount: float, confidence: float | Non
         )
 
     # ── Regra 5: teto de prejuízo diário ──
-    pnl_today = supabase_sync.today_realized_pnl()
+    pnl_today = supabase_sync.today_realized_pnl(source=source)
     daily_cap = round(balance * settings.daily_loss_cap_pct, 2)
     if pnl_today <= -daily_cap:
         raise veto(
@@ -147,11 +177,13 @@ def evaluate(active: str, direction: str, amount: float, confidence: float | Non
         "confidence": confidence,
         "consecutive_losses": streak,
         "pnl_today": pnl_today,
+        "margin_level": margin_level,
     }
     supabase_sync.insert_risk_event(
-        "approved", "OK", active, direction, confidence, amount, balance, "Aprovado pelo Risk Judge", verdict
+        "approved", "OK", active, direction, confidence, amount, balance,
+        "Aprovado pelo Risk Judge", {**verdict, "source": source},
     )
-    logger.info("Risk Judge APROVOU %s %s %.2f (conf=%s)", active, direction, amount, confidence)
+    logger.info("Risk Judge APROVOU %s %s %.2f (conf=%s, source=%s)", active, direction, amount, confidence, source)
     return verdict
 
 
