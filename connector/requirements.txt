@@ -13,3 +13,8 @@ httpx==0.28.1
 
 # Supabase — gravação de trades e sinais.
 supabase==2.11.0
+
+# IQ Option (API não-oficial) — vem do GitHub, commit fixado. Requer git no build
+# (o Render tem). O fork exige websocket-client 0.56.0 (versões novas quebram a lib).
+iqoptionapi @ git+https://github.com/iqoptionapi/iqoptionapi.git@8a903cc094a74af1ed935a56a2d6b5a9ed3319d7
+websocket-client==0.56.0

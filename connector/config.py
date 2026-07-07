@@ -1,6 +1,7 @@
 """Configuração do Connector, carregada de variáveis de ambiente / .env."""
 from __future__ import annotations
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -123,6 +124,16 @@ class Settings(BaseSettings):
     @property
     def autotrader_assets_list(self) -> list[str]:
         return [s.strip() for s in self.autotrader_assets.split(",") if s.strip()]
+
+    # Painéis (ex.: Render) às vezes deixam passar espaço/quebra-linha ao colar um
+    # secret. Um espaço no NEXUS_USER_ID quebra o filtro UUID do Supabase (22P02).
+    @field_validator(
+        "nexus_user_id", "supabase_url", "supabase_service_role_key",
+        "iq_email", "iq_ssid", mode="after",
+    )
+    @classmethod
+    def _strip_env(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
 
 settings = Settings()
