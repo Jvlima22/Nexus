@@ -47,7 +47,10 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from contextlib import asynccontextmanager
 from typing import Literal, Optional
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5  # Windows-only: sem wheel em Linux/macOS (ex.: Render)
+except ImportError:  # connector sobe só com IQ Option; features MT5 respondem 503
+    mt5 = None  # type: ignore[assignment]
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -88,7 +91,7 @@ TIMEFRAME_MAP: dict[str, int] = {
     "H1":  mt5.TIMEFRAME_H1,
     "H4":  mt5.TIMEFRAME_H4,
     "D1":  mt5.TIMEFRAME_D1,
-}
+} if mt5 is not None else {}
 
 # IQ Option: segundos → label (o que indicators.analyze espera em `timeframe`).
 _IQ_TF_LABEL: dict[int, str] = {60: "M1", 300: "M5", 900: "M15", 3600: "H1", 14400: "H4", 86400: "D1"}
@@ -146,31 +149,38 @@ async def lifespan(app: FastAPI):
     sync.start_reconcile_on_boot()  # fecha ordens órfãs de restarts anteriores
     autotrader.engine.start()
 
-    # ── MetaTrader 5 ──
-    try:
-        if settings.mt5_login and settings.mt5_password and settings.mt5_server:
-            ok = mt5.initialize(
-                login=settings.mt5_login,
-                password=settings.mt5_password,
-                server=settings.mt5_server,
-            )
-        else:
-            ok = mt5.initialize()
-
-        _mt5_connected = ok
-        if ok:
-            info = mt5.account_info()
-            logger.info("MT5 conectado — conta %s | saldo $%.2f", info.login, info.balance)
-        else:
-            logger.warning("MT5 não conectado — %s", mt5.last_error())
-    except Exception:  # noqa: BLE001
-        logger.exception("MT5: erro na inicialização")
+    # ── MetaTrader 5 (opcional) ──
+    # Ausente em Linux/Render: o connector sobe só com IQ Option e as rotas /mt5/*
+    # respondem 503 via _require_mt5(). Só inicializa se a lib estiver presente.
+    if mt5 is None:
+        logger.info("MetaTrader5 indisponível neste ambiente — connector opera só com IQ Option.")
         _mt5_connected = False
+    else:
+        try:
+            if settings.mt5_login and settings.mt5_password and settings.mt5_server:
+                ok = mt5.initialize(
+                    login=settings.mt5_login,
+                    password=settings.mt5_password,
+                    server=settings.mt5_server,
+                )
+            else:
+                ok = mt5.initialize()
+
+            _mt5_connected = ok
+            if ok:
+                info = mt5.account_info()
+                logger.info("MT5 conectado — conta %s | saldo $%.2f", info.login, info.balance)
+            else:
+                logger.warning("MT5 não conectado — %s", mt5.last_error())
+        except Exception:  # noqa: BLE001
+            logger.exception("MT5: erro na inicialização")
+            _mt5_connected = False
 
     yield
 
-    mt5.shutdown()
-    logger.info("MT5 desconectado.")
+    if mt5 is not None:
+        mt5.shutdown()
+        logger.info("MT5 desconectado.")
 
 
 # ---------------------------------------------------------------------------
@@ -272,7 +282,10 @@ def health():
         "ok": True,
         "iq_connected": client.is_healthy(),
         "mt5_connected": _mt5_connected,
-        "mt5_error": str(mt5.last_error()) if not _mt5_connected else None,
+        "mt5_error": (
+            None if _mt5_connected
+            else (str(mt5.last_error()) if mt5 is not None else "MetaTrader5 indisponível neste ambiente")
+        ),
     }
 
 

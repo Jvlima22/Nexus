@@ -11,8 +11,14 @@ services:
     healthCheckPath: /health
     region: oregon
     envVars:
-      - key: IQ_SSID
+      # Auth IQ Option — RECOMENDADO: email+senha (a lib gerencia o SSID internamente,
+      # mais confiável que injetar SSID no fork). SSID abaixo é fallback best-effort.
+      - key: IQ_EMAIL
         sync: false               # defina manualmente no painel (secreto)
+      - key: IQ_PASSWORD
+        sync: false
+      - key: IQ_SSID
+        sync: false               # fallback (a) dev: cole aqui  (b) prod: use SSID_ENDPOINT+TOKEN
       - key: SSID_ENDPOINT
         sync: false
       - key: SSID_TOKEN

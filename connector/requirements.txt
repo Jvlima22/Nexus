@@ -1,7 +1,9 @@
 # NEXUS Connector — dependências (MT5 Edition)
 #
-# MetaTrader5: apenas Windows x64 com terminal MT5 instalado.
-MetaTrader5>=5.0.45
+# MetaTrader5: apenas Windows x64 com terminal MT5 instalado. O marcador de ambiente
+# faz o pip PULAR o pacote em Linux/macOS (ex.: Render, que não tem wheel MT5 e
+# quebraria o build). Lá o connector sobe só com IQ Option; rotas /mt5/* dão 503.
+MetaTrader5>=5.0.45; sys_platform == "win32"
 
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
