@@ -1,0 +1,22 @@
+code: "edge-backtest"
+name: "Edge Backtest"
+icon: "📊"
+description: "Prova/refuta o edge estatístico de uma estratégia a partir do histórico do Connector IQ Option, com veredito ATIVAR/DESCARTAR e handoff via strategy-spec.json. Não executa ordens."
+
+agents:
+  - dante-dados
+  - valter-veredito
+  - rita-rigor
+
+skills:
+  - web_search
+  - web_fetch
+
+data:
+  - pipeline/data/research-brief.md
+  - pipeline/data/domain-framework.md
+  - pipeline/data/quality-criteria.md
+  - pipeline/data/output-examples.md
+  - pipeline/data/anti-patterns.md
+
+pipeline: pipeline/pipeline.yaml

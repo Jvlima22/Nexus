@@ -3,7 +3,7 @@
  * Candles ao vivo vêm DIRETO daqui (arquitetura Híbrida) — não passam pelo Supabase.
  */
 
-const HTTP_URL = (import.meta.env.VITE_CONNECTOR_URL as string | undefined) ?? "http://localhost:8000";
+const HTTP_URL = (import.meta.env.VITE_CONNECTOR_URL as string | undefined) ?? "http://localhost:8010";
 const WS_URL =
   (import.meta.env.VITE_CONNECTOR_WS_URL as string | undefined) ??
   HTTP_URL.replace(/^http/, "ws");
@@ -44,7 +44,7 @@ async function connectorFetch(path: string, init?: RequestInit): Promise<Respons
   try {
     return await fetch(`${HTTP_URL}${path}`, init);
   } catch {
-    throw new Error("Connector offline — inicie o serviço (python main.py em localhost:8000)");
+    throw new Error("Connector offline — inicie o serviço (python main.py em localhost:8010)");
   }
 }
 

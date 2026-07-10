@@ -1,0 +1,23 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 10 * * *'     # Executa todo dia às 10h da manhã (UTC)
+  workflow_dispatch:         # Permite rodar manualmente para testar
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Insert keep-alive record
+        run: |
+          curl -X POST 'https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/rest/v1/keep_alive_logs' \
+            -H 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}' \
+            -H 'Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "status": "keep-alive",
+              "source": "github-actions",
+              "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
+            }'

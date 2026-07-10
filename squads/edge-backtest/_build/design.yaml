@@ -1,0 +1,107 @@
+# Design output — edge-backtest
+# Input: discovery.yaml + data-analysis best-practice + backtesting domain knowledge
+
+squad:
+  code: "edge-backtest"
+  name: "Edge Backtest"
+  description: "Prova ou refuta o edge estatístico de uma estratégia de trading a partir do histórico do Connector IQ Option, com veredito ATIVAR/DESCARTAR e handoff via strategy-spec.json."
+
+agents:
+  - id: "dante-dados"
+    name: "Dante Dados"
+    title: "Analista Quantitativo"
+    icon: "📊"
+    execution: "subagent"
+    role_summary: "Busca candles do Connector, simula a estratégia sobre o histórico e computa métricas com rigor estatístico (amostra, expectancy, drawdown, significância vs. random walk)."
+    skills: []
+    tasks:
+      - name: "fetch-candles"
+        file: "tasks/fetch-candles.md"
+        description: "Puxa o histórico de candles do Connector IQ Option para o ativo/timeframe/período configurados."
+      - name: "run-backtest"
+        file: "tasks/run-backtest.md"
+        description: "Simula a estratégia sobre os candles, gerando a lista de trades (entrada, saída, resultado)."
+      - name: "compute-stats"
+        file: "tasks/compute-stats.md"
+        description: "Calcula as métricas de performance e o teste de significância estatística sobre os trades."
+
+  - id: "valter-veredito"
+    name: "Valter Veredito"
+    title: "Redator Analítico"
+    icon: "📝"
+    execution: "inline"
+    role_summary: "Transforma as métricas em relatório no padrão data-analysis, emite o veredito ATIVAR/DESCARTAR com nível de confiança e, se ATIVAR, exporta strategy-spec.json."
+    skills: []
+    tasks:
+      - name: "write-report"
+        file: "tasks/write-report.md"
+        description: "Escreve o relatório de backtest (sumário executivo, tabela de métricas, insights, metodologia)."
+      - name: "emit-verdict"
+        file: "tasks/emit-verdict.md"
+        description: "Emite o veredito ATIVAR/DESCARTAR com confiança e, se ATIVAR, gera o strategy-spec.json."
+
+  - id: "rita-rigor"
+    name: "Rita Rigor"
+    title: "Revisora de Rigor Estatístico"
+    icon: "🔎"
+    execution: "inline"
+    role_summary: "Revisor obrigatório. Audita o relatório contra armadilhas estatísticas (amostra pequena, look-ahead bias, overfitting/p-hacking, custos ignorados) antes de liberar o veredito."
+    skills: []
+
+pipeline:
+  - step: 1
+    name: "configurar-backtest"
+    type: "checkpoint"
+    output_file: "squads/edge-backtest/output/backtest-config.md"
+  - step: 2
+    name: "analise-dados"
+    type: "agent"
+    agent: "dante-dados"
+    execution: "subagent"
+    model_tier: "powerful"
+    input_file: "squads/edge-backtest/output/backtest-config.md"
+    output_file: "squads/edge-backtest/output/metrics.md"
+  - step: 3
+    name: "relatorio-veredito"
+    type: "agent"
+    agent: "valter-veredito"
+    execution: "inline"
+    input_file: "squads/edge-backtest/output/metrics.md"
+    output_file: "squads/edge-backtest/output/report.md"
+  - step: 4
+    name: "revisao-rigor"
+    type: "agent"
+    agent: "rita-rigor"
+    execution: "inline"
+    input_file: "squads/edge-backtest/output/report.md"
+    output_file: "squads/edge-backtest/output/review.md"
+    on_reject: 3
+  - step: 5
+    name: "aprovar-veredito"
+    type: "checkpoint"
+
+research_brief: |
+  Domínio: backtesting de estratégias de trading / rigor estatístico. Fundamentos embutidos
+  (sem web search por economia de tokens): (1) tamanho de amostra — poucos trades tornam o
+  win rate ruído; regra prática mínima ~100-200 trades para inferência mínima. (2) Edge real
+  vs. sorte — comparar win rate observado contra o esperado sob random walk (payoff da corretora)
+  usando intervalo de confiança / teste binomial; o breakeven de opções binárias depende do
+  payout (ex: payout 85% exige win rate > 54,05% só pra empatar). (3) Look-ahead bias — nunca
+  usar dados do futuro (fechamento do candio de decisão) na entrada. (4) Overfitting / p-hacking
+  — testar N variantes e escolher a melhor infla o falso-positivo; aplicar correção de múltiplos
+  testes ou reservar out-of-sample. (5) Custos — spread, slippage e payout < 100% corroem edge
+  aparente. Referência interna: OTC provado random walk (gate 0/30 + 12 variantes ~50%).
+
+quality_criteria_summary: |
+  Todo relatório: métrica sempre com comparação (breakeven/baseline), insight com "isso significa",
+  nível de confiança por achado, metodologia (período, fonte, tamanho de amostra, exclusões),
+  sem qualificadores vagos, veredito explícito ATIVAR/DESCARTAR.
+
+skills_installed:
+  - "web_search"
+  - "web_fetch"
+
+formats_selected: []
+
+best_practices_consulted:
+  - "data-analysis.md"

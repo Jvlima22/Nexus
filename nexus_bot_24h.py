@@ -10,9 +10,21 @@ from datetime import datetime, timezone, date
 from pathlib import Path
 from collections import defaultdict
 
+def _probe(pkg: str) -> None:
+    if pkg == "python-dotenv":
+        __import__("dotenv")
+    elif pkg == "supabase":
+        # "import supabase" sozinho é enganado pela pasta supabase/ (migrations
+        # SQL) na raiz do projeto, que o Python trata como namespace package —
+        # precisa checar o símbolo real que usamos.
+        from supabase import create_client  # noqa: F401
+    else:
+        __import__(pkg)
+
+
 for pkg in ["MetaTrader5", "python-dotenv", "supabase"]:
     try:
-        __import__("dotenv" if pkg == "python-dotenv" else pkg)
+        _probe(pkg)
     except ImportError:
         import subprocess
         subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "-q"])
@@ -23,10 +35,21 @@ from dotenv import load_dotenv
 # ── Config ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
 load_dotenv(BASE_DIR / ".env")
+# connector/.env tem SUPABASE_SERVICE_ROLE_KEY + NEXUS_USER_ID + os tunings do Risk
+# Judge (RISK_PCT, MIN_CONFIDENCE, ...). Carrega ANTES de importar risk (que lê
+# connector.config.settings no import) — assim funciona com qualquer cwd de onde
+# este script for lançado. override=False: se a raiz já definiu a mesma chave, ela vence.
+load_dotenv(BASE_DIR / "connector" / ".env", override=False)
 
-MT5_LOGIN    = int(os.getenv("MT5_LOGIN", "108960873"))
-MT5_PASSWORD = os.getenv("MT5_PASSWORD", "H_3vClCm")
-MT5_SERVER   = os.getenv("MT5_SERVER", "MetaQuotes-Demo")
+# connector/ tem o Risk Judge (risk.py) — mesmo juiz que audita o lado IQ Option,
+# agora agnóstico de corretora (ver connector/risk.py).
+sys.path.insert(0, str(BASE_DIR / "connector"))
+import risk  # noqa: E402 — precisa do sys.path e do load_dotenv acima
+
+MT5_LOGIN     = int(os.getenv("MT5_LOGIN", "108960873"))
+MT5_PASSWORD  = os.getenv("MT5_PASSWORD", "H_3vClCm")
+MT5_SERVER    = os.getenv("MT5_SERVER", "MetaQuotes-Demo")
+NEXUS_USER_ID = os.getenv("NEXUS_USER_ID", "")
 
 RISK_PCT        = 0.02
 MAX_POSITIONS   = 10
@@ -90,6 +113,7 @@ def sb_log_open(sinal: dict, ticket: int, lots: float) -> None:
             return
         now = datetime.now(timezone.utc).isoformat()
         sb.table("trades").insert({
+            "user_id":      NEXUS_USER_ID,
             "created_at":   now,
             "time":         now,
             "source":       "nexus_mt5",
@@ -112,6 +136,27 @@ def sb_log_open(sinal: dict, ticket: int, lots: float) -> None:
         log.warning(f"Supabase open log falhou: {e}")
 
 
+def sb_log_account_snapshot(acc) -> None:
+    """Snapshot de conta (balance/equity/margin_level) em bankroll_history — alimenta
+    o card de conta MT5 e o gráfico de evolução na Visão Geral (source='nexus_mt5')."""
+    try:
+        sb = _supabase()
+        if not sb:
+            return
+        sb.table("bankroll_history").insert({
+            "user_id":      NEXUS_USER_ID,
+            "balance":      acc.balance,
+            "equity":       acc.equity,
+            "margin_level": acc.margin_level,
+            "currency":     "USD",
+            "account_type": "real",
+            "source":       "nexus_mt5",
+            "timestamp":    datetime.now(timezone.utc).isoformat(),
+        }).execute()
+    except Exception as e:
+        log.warning(f"Supabase account snapshot falhou: {e}")
+
+
 def sb_log_close(position_id: int, close_price: float, pnl: float, reason: str) -> None:
     """Atualiza trade fechado no Supabase."""
     try:
@@ -127,7 +172,7 @@ def sb_log_close(position_id: int, close_price: float, pnl: float, reason: str) 
             "pnl":          pnl,
             "close_reason": reason,
             "closed_at":    now,
-        }).eq("position_id", str(position_id)).execute()
+        }).eq("user_id", NEXUS_USER_ID).eq("position_id", str(position_id)).execute()
     except Exception as e:
         log.warning(f"Supabase close log falhou: {e}")
 
@@ -272,6 +317,16 @@ def calcular_lots(symbol: str, entry: float, sl: float, balance: float) -> float
     step = info.volume_step
     lots = round(round(lots / step) * step, 2)
     return max(info.volume_min, min(info.volume_max, lots))
+
+def risco_monetario(symbol: str, entry: float, sl: float, lots: float) -> float:
+    """Risco em $ da posição (distância ao SL × valor do tick × lotes) — o `amount`
+    que o Risk Judge audita contra o teto de 2% da banca."""
+    info = mt5.symbol_info(symbol)
+    if not info or not info.trade_tick_size or not info.trade_tick_value:
+        return 0.0
+    dist = abs(entry - sl)
+    return (dist / info.trade_tick_size) * info.trade_tick_value * lots
+
 
 def ja_tem_posicao(symbol: str) -> bool:
     pos = mt5.positions_get(symbol=symbol)
@@ -473,6 +528,8 @@ def ciclo():
     acc    = mt5.account_info()
     hoje   = date.today()
 
+    sb_log_account_snapshot(acc)
+
     # Reseta saldo de abertura no novo dia
     if hoje != dia_atual:
         dia_atual          = hoje
@@ -530,6 +587,29 @@ def ciclo():
     for sinal in novos_sinais:
         if executados >= slots:
             break
+
+        # ── Risk Judge (unificado com o lado IQ Option): circuit breaker, teto
+        # diario, gate de margem, blackout de noticia e bias macro (Polymarket).
+        # Sessao (Londres/NY) fica desligada aqui: o bot MT5 opera 24h por decisao.
+        lots_estimados = calcular_lots(sinal["symbol"], sinal["entry"], sinal["sl"], acc.balance)
+        risco = risco_monetario(sinal["symbol"], sinal["entry"], sinal["sl"], lots_estimados)
+        bias = "call" if sinal["side"] == "BUY" else "put"
+        try:
+            risk.evaluate(
+                sinal["symbol"], bias, risco, None,
+                balance=acc.balance, source="nexus_mt5",
+                margin_level=acc.margin_level, enforce_session=False,
+            )
+        except risk.RiskError as exc:
+            log.warning(f"VETADO {sinal['symbol']}: {exc.code} — {exc}")
+            continue
+        except Exception as exc:
+            # Falha inesperada no Risk Judge (ex: Supabase indisponível) — trata
+            # como veto por seguranca: melhor pular um sinal do que operar sem
+            # o juiz ter confirmado circuit breaker/teto diario/margem.
+            log.error(f"Risk Judge falhou p/ {sinal['symbol']} (tratando como veto): {exc}")
+            continue
+
         res = executar(sinal, acc.balance)
         if res["ok"]:
             log.info(f"ABERTO #{res['ticket']} {sinal['side']} {sinal['symbol']} {res['lots']} lots")

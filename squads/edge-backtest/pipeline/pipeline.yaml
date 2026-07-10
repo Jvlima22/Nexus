@@ -1,0 +1,44 @@
+name: "Edge Backtest"
+code: "edge-backtest"
+description: "Prova/refuta o edge de uma estratégia e emite veredito ATIVAR/DESCARTAR."
+
+steps:
+  - step: 1
+    name: "configurar-backtest"
+    type: "checkpoint"
+    file: "steps/step-01-configurar-backtest.md"
+    output_file: "squads/edge-backtest/output/backtest-config.md"
+  - step: 2
+    name: "analise-dados"
+    type: "agent"
+    agent: "dante-dados"
+    execution: "subagent"
+    model_tier: "powerful"
+    file: "steps/step-02-analise-dados.md"
+    input_file: "squads/edge-backtest/output/backtest-config.md"
+    output_file: "squads/edge-backtest/output/metrics.md"
+  - step: 3
+    name: "relatorio-veredito"
+    type: "agent"
+    agent: "valter-veredito"
+    execution: "inline"
+    file: "steps/step-03-relatorio-veredito.md"
+    input_file: "squads/edge-backtest/output/metrics.md"
+    output_file: "squads/edge-backtest/output/report.md"
+  - step: 4
+    name: "revisao-rigor"
+    type: "agent"
+    agent: "rita-rigor"
+    execution: "inline"
+    file: "steps/step-04-revisao-rigor.md"
+    input_file: "squads/edge-backtest/output/report.md"
+    output_file: "squads/edge-backtest/output/review.md"
+    on_reject: 3
+  - step: 5
+    name: "aprovar-veredito"
+    type: "checkpoint"
+    file: "steps/step-05-aprovar-veredito.md"
+
+checkpoints:
+  - 1
+  - 5

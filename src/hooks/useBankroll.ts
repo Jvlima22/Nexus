@@ -3,22 +3,27 @@ import { supabase } from "@/lib/supabase";
 
 export interface BankrollPoint {
   balance: number;
+  equity: number | null;
+  margin_level: number | null;
   timestamp: string;
 }
 
 /**
- * Histórico de saldo (bankroll_history) com tempo real. Retorna a série em ordem
- * cronológica e o saldo mais recente. O Connector faz snapshots periódicos.
+ * Histórico de saldo (bankroll_history) com tempo real, filtrado por `source`
+ * (conta/corretora — ex. "nexus_mt5" ou "nexus"/"tick"). Retorna a série em
+ * ordem cronológica e o snapshot mais recente.
  */
-export function useBankroll(limit = 200) {
+export function useBankroll(source: string, limit = 200) {
   const [points, setPoints] = useState<BankrollPoint[]>([]);
 
   useEffect(() => {
     let active = true;
+    setPoints([]);
 
     supabase
       .from("bankroll_history")
-      .select("balance,timestamp")
+      .select("balance,equity,margin_level,timestamp")
+      .eq("source", source)
       .order("timestamp", { ascending: false })
       .limit(limit)
       .then(({ data }) => {
@@ -26,9 +31,11 @@ export function useBankroll(limit = 200) {
       });
 
     const channel = supabase
-      .channel("bankroll-rt")
+      .channel(`bankroll-rt-${source}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "bankroll_history" }, (payload) => {
-        setPoints((prev) => [...prev, payload.new as BankrollPoint].slice(-limit));
+        const row = payload.new as BankrollPoint & { source: string };
+        if (row.source !== source) return;
+        setPoints((prev) => [...prev, row].slice(-limit));
       })
       .subscribe();
 
@@ -36,8 +43,8 @@ export function useBankroll(limit = 200) {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [limit]);
+  }, [source, limit]);
 
-  const latest = points.length ? points[points.length - 1].balance : null;
+  const latest = points.length ? points[points.length - 1] : null;
   return { points, latest };
 }

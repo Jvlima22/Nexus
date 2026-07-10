@@ -1,0 +1,25 @@
+squad_code: "edge-backtest"
+purpose: "Analisar histórico de mercado e provar/refutar o edge estatístico de estratégias de trading, entregando um veredito de ativar ou descartar cada estratégia."
+domain: "analysis"
+
+company:
+  name: "NEXUS Trader"
+  tone: "Técnico, direto, transparente, anti-hype; foco em risco, dados e método."
+  products: "Plataforma de trading autônoma com IA (Claude), autotrader forex/OTC com Risk Judge, integração multi-corretora (IQ Option, MT5), análise de mercado assistida por IA."
+
+language: "Português (Brasil)"
+
+context:
+  data_sources: "Connector IQ Option (endpoint GET /candles, FastAPI, porta 8010; requer IQ conectada)."
+  decisions: "Ativar ou descartar uma estratégia/variante — decidir se tem edge estatístico suficiente pra ir ao autotrader ou ser descartada."
+  output_format: "Nota Markdown no vault Obsidian (30_Trading/) + relatório Markdown no diretório de output do squad."
+
+tools_needed:
+  - "code-execution (bater no Connector /candles, rodar estatística)"
+  - "file-read-write (gravar nota no vault e relatório no output)"
+
+investigation:
+  enabled: false
+  profiles: []
+
+target_formats: []

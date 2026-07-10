@@ -1,0 +1,4 @@
+id,name,title,icon,execution,path
+dante-dados,Dante Dados,Analista Quantitativo,📊,subagent,./agents/dante-dados.agent.md
+valter-veredito,Valter Veredito,Redator Analítico,📝,inline,./agents/valter-veredito.agent.md
+rita-rigor,Rita Rigor,Revisora de Rigor Estatístico,🔎,inline,./agents/rita-rigor.agent.md

@@ -32,3 +32,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+
+# OpenSquad (teste — ver 20_Ferramentas/OpenSquad.md)
+dashboard/test-results/
+dashboard/playwright-report/
+_opensquad/_investigations/*
+!_opensquad/_investigations/.gitkeep
+squads/*/output/
+
+_opensquad

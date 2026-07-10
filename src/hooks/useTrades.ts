@@ -60,7 +60,7 @@ export function useTrades(limit = 100) {
       .order("created_at", { ascending: false })
       .limit(limit)
       .then(({ data }) => {
-        if (active && data) setTrades(data as TradeRow[]);
+        if (active && data) setTrades(data as unknown as TradeRow[]);
       });
 
     const channel = supabase
