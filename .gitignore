@@ -43,3 +43,7 @@ _opensquad/_investigations/*
 squads/*/output/
 
 _opensquad
+
+# Day Trader Skill runtime files
+trader/state/
+trader/*.tmp

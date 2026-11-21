@@ -3,6 +3,19 @@
   "name": "gostaria de usar essa skill no",
   "createdAt": "2026-11-21T20:10:50.660Z",
   "filename": "f298829e-f626-437c-9812-67c5ff7db763.json",
-  "geminiStarted": false,
-  "messages": []
+  "geminiStarted": true,
+  "messages": [
+    {
+      "id": "b8105cf0-3ed9-4e6f-b35a-4b791c516f90",
+      "role": "user",
+      "content": "Opção A",
+      "status": "pending",
+      "model": "gemini-3.8-flash-high",
+      "client_type": "gemini-bridge",
+      "parent_message_id": null,
+      "created_at": "2026-11-21T20:54:54.044Z",
+      "sender": "ios",
+      "is_cancelled": false
+    }
+  ]
 }

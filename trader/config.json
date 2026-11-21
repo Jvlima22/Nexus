@@ -1,0 +1,65 @@
+{
+  "budget": 5000,
+  "cash_buffer_pct": 10,
+  "max_position_pct": 75,
+  "max_order_usd": 4000,
+  "min_order_usd": 5,
+  "max_loss_per_trade_usd": 100,
+  "max_daily_loss_usd": 200,
+  "max_trades_per_day": 3,
+  "max_orders_per_day": 10,
+  "min_reward_risk": 1.2,
+  "require_stop": true,
+  "no_entries_before": "09:45",
+  "no_entries_after": "15:30",
+  "flat_by": "15:55",
+  "fractional": false,
+  "broker": "alpaca",
+  "paper": true,
+  "blocked": [],
+  "allow_options": false,
+  "allow_margin": false,
+  "allow_short": false,
+  "pdt_guard": false,
+  "sec_user_agent": "NEXUS Trader trader@nexus.local",
+  "symbols": {
+    "us_equities": [
+      "TSLA",
+      "NVDA",
+      "AAPL",
+      "SPY",
+      "MSFT",
+      "AMZN",
+      "META",
+      "QQQ"
+    ],
+    "forex": [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "USDCHF",
+      "AUDUSD",
+      "NZDUSD",
+      "USDCAD",
+      "EURJPY",
+      "GBPJPY"
+    ],
+    "commodities": [
+      "XAUUSD",
+      "GOLD"
+    ]
+  },
+  "symbol_aliases": {
+    "EURUSD": "EURUSD=X",
+    "GBPUSD": "GBPUSD=X",
+    "USDJPY": "USDJPY=X",
+    "USDCHF": "USDCHF=X",
+    "AUDUSD": "AUDUSD=X",
+    "NZDUSD": "NZDUSD=X",
+    "USDCAD": "USDCAD=X",
+    "EURJPY": "EURJPY=X",
+    "GBPJPY": "GBPJPY=X",
+    "XAUUSD": "GC=F",
+    "GOLD": "GC=F"
+  }
+}
